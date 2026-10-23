@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  FARMER
+  BUYER
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  SHIPPED
+  DELIVERED
+  REJECTED
+  CANCELLED
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  name          String
+  email         String         @unique
+  phone         String?
+  passwordHash  String
+  role          Role
+  avatarUrl     String?
+  address       String?
+  lat           Float?
+  lng           Float?
+  createdAt     DateTime       @default(now())
+  products      Product[]
+  favorites     Favorite[]
+  buyerOrders   Order[]        @relation("BuyerOrders")
+  sellerOrders  Order[]        @relation("SellerOrders")
+  notifications Notification[]
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  products Product[]
+}
+
+model Product {
+  id                Int         @id @default(autoincrement())
+  title             String
+  description       String
+  price             Float
+  unit              String
+  quantityAvailable Int
+  imageUrl          String?
+  lat               Float?
+  lng               Float?
+  address           String?
+  createdAt         DateTime    @default(now())
+  seller            User        @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  sellerId          Int
+  category          Category    @relation(fields: [categoryId], references: [id])
+  categoryId        Int
+  favorites         Favorite[]
+  orderItems        OrderItem[]
+
+  @@index([categoryId])
+  @@index([sellerId])
+}
+
+model Favorite {
+  userId    Int
+  productId Int
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([userId, productId])
+}
+
+model Order {
+  id              Int         @id @default(autoincrement())
+  status          OrderStatus @default(PENDING)
+  totalPrice      Float
+  deliveryAddress String
+  createdAt       DateTime    @default(now())
+  buyer           User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  buyerId         Int
+  seller          User        @relation("SellerOrders", fields: [sellerId], references: [id])
+  sellerId        Int
+  items           OrderItem[]
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  quantity  Int
+  unitPrice Float
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId   Int
+  product   Product @relation(fields: [productId], references: [id])
+  productId Int
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+}
